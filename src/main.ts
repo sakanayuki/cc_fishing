@@ -1,6 +1,7 @@
 import { VIEW_H, VIEW_W } from './config';
 import { Game } from './game';
 import { makeCanvas } from './gfx/pixel';
+import { loadFishArt } from './gfx/fishArt';
 import { FONT_FAMILY } from './gfx/text';
 import { PlayScene } from './scenes/play';
 import { ResultScene } from './scenes/result';
@@ -98,11 +99,11 @@ function frame(now: number): void {
 async function boot(): Promise<void> {
   resize();
   window.addEventListener('resize', resize);
-  try {
-    await Promise.race([document.fonts.load(`16px ${FONT_FAMILY}`), new Promise((r) => setTimeout(r, 2000))]);
-  } catch {
+  const fonts = Promise.race([document.fonts.load(`16px ${FONT_FAMILY}`), new Promise((r) => setTimeout(r, 2000))]).catch(
     // フォントが読めなくてもシステムフォントで続行
-  }
+    () => undefined,
+  );
+  await Promise.all([loadFishArt(), fonts]);
   requestAnimationFrame((t) => {
     last = t;
     frame(t);

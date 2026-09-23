@@ -384,7 +384,7 @@ function renderCutin(ctx: CanvasRenderingContext2D, p: Extract<Phase, { kind: 'c
   const { species, t } = p;
   const rarity = rarityOf(species);
   const cx = VIEW_W / 2;
-  const cy = 250;
+  const cy = 320;
 
   // 背景＋集中線
   ctx.fillStyle = rarity === 3 ? '#1a1040' : '#0c3060';
@@ -413,24 +413,23 @@ function renderCutin(ctx: CanvasRenderingContext2D, p: Extract<Phase, { kind: 'c
     const a = -Math.PI / 2 + (i / 26 - 0.5) * 2.6;
     const d = 30 + splashT * (80 + (i % 5) * 18);
     const x = cx + Math.cos(a) * d;
-    const y = cy + 70 + Math.sin(a) * d + splashT * splashT * 60;
+    const y = cy + 110 + Math.sin(a) * d + splashT * splashT * 60;
     ctx.fillStyle = i % 3 === 0 ? '#ffffff' : '#8fdcff';
     const s = 3 + (i % 3);
     ctx.fillRect(Math.round(x), Math.round(y), s, s);
   }
 
-  // 拡大した魚が跳ね上がる
-  const sprite = fishSprite(species.id).right;
-  const scale = Math.max(3, Math.min(6, Math.floor(220 / sprite.width)));
+  // 大きい絵の魚が跳ね上がる
+  const art = fishSprite(species.id);
   const rise = t < 0.35 ? easeOutBack(t / 0.35) : 1;
-  const fy = VIEW_H + 80 - (VIEW_H + 80 - cy) * rise + Math.sin(t * 4) * 4;
+  const fy = VIEW_H + 160 - (VIEW_H + 160 - cy) * rise + Math.sin(t * 4) * 4;
+  // 横長の絵は頭が上がるように傾ける
+  const tilt = art.largePose === 'left' ? 0.3 : art.largePose === 'right' ? -0.3 : -0.08;
   ctx.save();
   ctx.imageSmoothingEnabled = false;
   ctx.translate(cx, fy);
-  ctx.rotate(-0.5 + Math.sin(t * 3) * 0.05);
-  const w = sprite.width * scale;
-  const h = sprite.height * scale;
-  ctx.drawImage(sprite, -w / 2, -h / 2, w, h);
+  ctx.rotate(tilt + Math.sin(t * 3) * 0.05);
+  ctx.drawImage(art.large, -Math.round(art.large.width / 2), -Math.round(art.large.height / 2));
   ctx.restore();
 
   // 右下の斜めパネルに釣り人の笑顔

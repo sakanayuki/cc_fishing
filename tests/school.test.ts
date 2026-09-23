@@ -35,8 +35,9 @@ describe('school', () => {
 
   it('当たり判定は魚体より少し小さい', () => {
     const m = fish('maguro', 100, 300);
-    expect(findTouchingFish([m], 100 + 20, 300)).toBe(m);
-    expect(findTouchingFish([m], 100 + 28 + 1, 300)).toBeUndefined();
+    const half = m.species.width / 2;
+    expect(findTouchingFish([m], 100 + half * 0.7, 300)).toBe(m);
+    expect(findTouchingFish([m], 100 + half - 1, 300)).toBeUndefined();
   });
 });
 

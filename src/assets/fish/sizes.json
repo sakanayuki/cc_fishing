@@ -1,0 +1,101 @@
+{
+  "aji": {
+    "width": 34,
+    "height": 15,
+    "large": {
+      "width": 116,
+      "height": 280,
+      "pose": "up"
+    }
+  },
+  "saba": {
+    "width": 40,
+    "height": 19,
+    "large": {
+      "width": 124,
+      "height": 280,
+      "pose": "up"
+    }
+  },
+  "kawahagi": {
+    "width": 34,
+    "height": 24,
+    "large": {
+      "width": 280,
+      "height": 237,
+      "pose": "left"
+    }
+  },
+  "madai": {
+    "width": 50,
+    "height": 25,
+    "large": {
+      "width": 169,
+      "height": 280,
+      "pose": "up"
+    }
+  },
+  "hirame": {
+    "width": 48,
+    "height": 31,
+    "large": {
+      "width": 280,
+      "height": 186,
+      "pose": "left"
+    }
+  },
+  "katsuo": {
+    "width": 56,
+    "height": 24,
+    "large": {
+      "width": 125,
+      "height": 280,
+      "pose": "up"
+    }
+  },
+  "maguro": {
+    "width": 72,
+    "height": 31,
+    "large": {
+      "width": 124,
+      "height": 280,
+      "pose": "up"
+    }
+  },
+  "mehikari": {
+    "width": 34,
+    "height": 13,
+    "large": {
+      "width": 76,
+      "height": 280,
+      "pose": "up"
+    }
+  },
+  "yumekasago": {
+    "width": 44,
+    "height": 22,
+    "large": {
+      "width": 157,
+      "height": 280,
+      "pose": "up"
+    }
+  },
+  "gindara": {
+    "width": 56,
+    "height": 18,
+    "large": {
+      "width": 87,
+      "height": 280,
+      "pose": "up"
+    }
+  },
+  "ankou": {
+    "width": 60,
+    "height": 35,
+    "large": {
+      "width": 280,
+      "height": 167,
+      "pose": "right"
+    }
+  }
+}

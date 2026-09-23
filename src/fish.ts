@@ -1,3 +1,4 @@
+import sizes from './assets/fish/sizes.json';
 import type { LayerId } from './config';
 
 export type FishId =
@@ -13,6 +14,17 @@ export type FishId =
   | 'gindara'
   | 'ankou';
 
+export type LargePose = 'up' | 'left' | 'right';
+
+interface FishArtInfo {
+  width: number;
+  height: number;
+  large: { width: number; height: number; pose: LargePose };
+}
+
+/** 画像の大きさと向き（tools/extract_fish.py が生成）。 */
+export const FISH_ART = sizes as Record<FishId, FishArtInfo>;
+
 export interface FishSpecies {
   id: FishId;
   name: string;
@@ -22,26 +34,32 @@ export interface FishSpecies {
   weight: number;
   /** 泳ぐ速さ（px/秒）。 */
   speed: number;
-  /** スプライトの大きさ（px）。 */
+  /** 泳いでいる時の絵の大きさ（px）。画像から決まる。 */
   width: number;
   height: number;
   /** 群れで出現する場合の匹数範囲。 */
   school?: [number, number];
 }
 
-export const SPECIES: readonly FishSpecies[] = [
-  { id: 'aji', name: 'アジ', layer: 'shallow', points: 10, weight: 5, speed: 30, width: 22, height: 9, school: [3, 4] },
-  { id: 'saba', name: 'サバ', layer: 'shallow', points: 15, weight: 4, speed: 36, width: 26, height: 10, school: [2, 4] },
-  { id: 'kawahagi', name: 'カワハギ', layer: 'shallow', points: 20, weight: 3, speed: 22, width: 20, height: 15, school: [1, 3] },
-  { id: 'madai', name: 'マダイ', layer: 'middle', points: 50, weight: 4, speed: 30, width: 34, height: 20 },
-  { id: 'hirame', name: 'ヒラメ', layer: 'middle', points: 60, weight: 3.5, speed: 24, width: 34, height: 18 },
-  { id: 'katsuo', name: 'カツオ', layer: 'middle', points: 70, weight: 3, speed: 48, width: 40, height: 16 },
-  { id: 'maguro', name: 'マグロ', layer: 'middle', points: 100, weight: 1.5, speed: 60, width: 56, height: 22 },
-  { id: 'mehikari', name: 'メヒカリ', layer: 'deep', points: 120, weight: 4, speed: 26, width: 22, height: 10 },
-  { id: 'yumekasago', name: 'ユメカサゴ', layer: 'deep', points: 150, weight: 3, speed: 24, width: 28, height: 16 },
-  { id: 'gindara', name: 'ギンダラ', layer: 'deep', points: 180, weight: 2.5, speed: 34, width: 38, height: 16 },
-  { id: 'ankou', name: 'アンコウ', layer: 'deep', points: 250, weight: 1.2, speed: 18, width: 44, height: 28 },
+const TABLE: Omit<FishSpecies, 'width' | 'height'>[] = [
+  { id: 'aji', name: 'アジ', layer: 'shallow', points: 10, weight: 5, speed: 30, school: [3, 4] },
+  { id: 'saba', name: 'サバ', layer: 'shallow', points: 15, weight: 4, speed: 36, school: [2, 4] },
+  { id: 'kawahagi', name: 'カワハギ', layer: 'shallow', points: 20, weight: 3, speed: 22, school: [1, 3] },
+  { id: 'madai', name: 'マダイ', layer: 'middle', points: 50, weight: 4, speed: 30 },
+  { id: 'hirame', name: 'ヒラメ', layer: 'middle', points: 60, weight: 3.5, speed: 24 },
+  { id: 'katsuo', name: 'カツオ', layer: 'middle', points: 70, weight: 3, speed: 48 },
+  { id: 'maguro', name: 'マグロ', layer: 'middle', points: 100, weight: 1.5, speed: 60 },
+  { id: 'mehikari', name: 'メヒカリ', layer: 'deep', points: 120, weight: 4, speed: 26 },
+  { id: 'yumekasago', name: 'ユメカサゴ', layer: 'deep', points: 150, weight: 3, speed: 24 },
+  { id: 'gindara', name: 'ギンダラ', layer: 'deep', points: 180, weight: 2.5, speed: 34 },
+  { id: 'ankou', name: 'アンコウ', layer: 'deep', points: 250, weight: 1.2, speed: 18 },
 ];
+
+export const SPECIES: readonly FishSpecies[] = TABLE.map((s) => ({
+  ...s,
+  width: FISH_ART[s.id].width,
+  height: FISH_ART[s.id].height,
+}));
 
 const byId = new Map(SPECIES.map((s) => [s.id, s]));
 
