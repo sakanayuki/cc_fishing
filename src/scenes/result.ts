@@ -5,19 +5,15 @@ import { getBackground } from '../gfx/scenery';
 import { drawText } from '../gfx/text';
 import { breakdown, totalScore, type Catches } from '../logic/score';
 
-const BUTTONS = {
-  retry: { x: 40, y: 532, w: 280, h: 40, label: 'もう一度' },
-  title: { x: 40, y: 584, w: 280, h: 40, label: 'タイトルへ' },
-} as const;
-
-type ButtonId = keyof typeof BUTTONS;
+/** 連打の勢いで押してしまわないよう、表示直後はタップを受け付けない。 */
+const INPUT_DELAY = 1.0;
 
 export class ResultScene implements Scene {
   private time = 0;
   private readonly score: number;
   private readonly isRecord: boolean;
   private readonly rows;
-  private pressed?: ButtonId;
+  private pressed = false;
 
   constructor(
     private game: Game,
@@ -28,26 +24,16 @@ export class ResultScene implements Scene {
     this.isRecord = game.submitScore(this.score);
   }
 
-  private hit(x: number, y: number): ButtonId | undefined {
-    for (const id of Object.keys(BUTTONS) as ButtonId[]) {
-      const b = BUTTONS[id];
-      if (x >= b.x && x <= b.x + b.w && y >= b.y && y <= b.y + b.h) return id;
-    }
-    return undefined;
-  }
-
-  pointerDown(x: number, y: number): void {
-    if (this.time < 0.6) return; // 連打の勢いで押してしまうのを防ぐ
-    this.pressed = this.hit(x, y);
+  /** どこを押してもタイトルへ戻る（離した瞬間に遷移）。 */
+  pointerDown(): void {
+    if (this.time >= INPUT_DELAY) this.pressed = true;
   }
 
   pointerUp(): void {
-    const id = this.pressed;
-    this.pressed = undefined;
-    if (!id) return;
+    if (!this.pressed) return;
+    this.pressed = false;
     this.game.sfx.select();
-    if (id === 'retry') this.game.startPlay();
-    else this.game.toTitle();
+    this.game.toTitle();
   }
 
   update(dt: number): void {
@@ -94,16 +80,8 @@ export class ResultScene implements Scene {
       ctx.globalAlpha = 1;
     });
 
-    for (const id of Object.keys(BUTTONS) as ButtonId[]) {
-      const b = BUTTONS[id];
-      const down = this.pressed === id;
-      ctx.fillStyle = '#081020';
-      ctx.fillRect(b.x, b.y + 4, b.w, b.h);
-      ctx.fillStyle = id === 'retry' ? (down ? '#1f5cb8' : '#2f7ae0') : down ? '#3a4a60' : '#56687e';
-      ctx.fillRect(b.x, b.y + (down ? 3 : 0), b.w, b.h);
-      ctx.fillStyle = 'rgba(255,255,255,0.2)';
-      ctx.fillRect(b.x, b.y + (down ? 3 : 0), b.w, 3);
-      drawText(ctx, b.label, b.x + b.w / 2, b.y + b.h / 2 + (down ? 3 : 0), { size: 18 });
+    if (this.time >= INPUT_DELAY && Math.floor(this.time * 2) % 2 === 0) {
+      drawText(ctx, 'タップでタイトルへ', VIEW_W / 2, 580, { size: 20, color: '#ffffff', outline: '#0c2a50', outlineWidth: 5 });
     }
   }
 }

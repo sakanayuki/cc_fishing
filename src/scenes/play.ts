@@ -52,14 +52,13 @@ export class PlayScene implements Scene {
 
   // ---- 入力 ----
 
-  pointerDown(_x: number, y: number): void {
+  pointerDown(): void {
     const p = this.phase;
     if (p.kind === 'cutin') {
       if (p.t > 0.5) p.t = CUTIN_DURATION;
       return;
     }
-    // 操作は画面下部のパネル（丸ボタン）で受け付ける
-    if (y < PANEL_Y) return;
+    // 画面のどこを押しても下の丸ボタンと同じ操作になる
     this.pressed = true;
 
     if (p.kind === 'fishing') {
