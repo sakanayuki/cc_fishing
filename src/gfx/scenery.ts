@@ -1,5 +1,6 @@
 import { HOOK_MAX_Y, PANEL_Y, ROD_TIP, SEABED_Y, SURFACE_Y, VIEW_H, VIEW_W } from '../config';
 import { createRng, range } from '../rng';
+import { centerOffset, view } from '../viewport';
 import { makeCanvas, mix, PixelGrid } from './pixel';
 
 export const COLORS = {
@@ -33,12 +34,12 @@ function seaColor(t: number): string {
 }
 
 /** 岩場の上端の高さ（x ごと）。中央は低く、両端は崖のように高い。 */
-function rockProfile(): number[] {
+function rockProfile(W: number): number[] {
   const rng = createRng(7);
   const tops: number[] = [];
   let jag = 0;
-  for (let x = 0; x < VIEW_W; x++) {
-    const u = (x - VIEW_W / 2) / (VIEW_W / 2);
+  for (let x = 0; x < W; x++) {
+    const u = (x - W / 2) / (W / 2);
     const cliff = Math.pow(Math.abs(u), 3) * 110;
     if (x % 6 === 0) jag = range(rng, -8, 8);
     const base = HOOK_MAX_Y + 22 - cliff + Math.sin(x * 0.07) * 6 + Math.sin(x * 0.19 + 1) * 4 + jag;
@@ -49,42 +50,47 @@ function rockProfile(): number[] {
 
 let background: HTMLCanvasElement | undefined;
 
-/** 動かない背景（空・海・光・岩・操作パネル）を一度だけ描く。 */
+/** 動かない背景（空・海・光・岩・操作パネル）。画面の幅が変わった時だけ描き直す。 */
 export function getBackground(): HTMLCanvasElement {
-  if (background) return background;
-  const [canvas, ctx] = makeCanvas(VIEW_W, VIEW_H);
+  if (background && background.width === view.w) return background;
+  const W = view.w;
+  const [canvas, ctx] = makeCanvas(W, VIEW_H);
   const rng = createRng(3);
 
   // 空（4px 刻みの帯でドット感を出す）
   for (let y = 0; y < HORIZON_Y; y += 4) {
     ctx.fillStyle = mix(COLORS.skyTop, COLORS.skyBottom, y / HORIZON_Y);
-    ctx.fillRect(0, y, VIEW_W, 4);
+    ctx.fillRect(0, y, W, 4);
   }
   // 雲
-  const cloud = new PixelGrid(VIEW_W, HORIZON_Y);
-  for (const [cx, cy, s] of [
-    [40, 26, 1],
-    [120, 14, 0.7],
-    [300, 30, 1.2],
-    [230, 60, 0.6],
-    [70, 70, 0.5],
-  ]) {
-    for (let i = 0; i < 5; i++) {
-      cloud.fillEllipse(cx + (i - 2) * 9 * s, cy - (i % 2) * 4 * s, 10 * s, 5 * s, '#ffffff');
+  const cloud = new PixelGrid(W, HORIZON_Y);
+  // 幅 360 ぶんの雲の配置を横に繰り返す
+  for (let base = 0; base < W; base += VIEW_W) {
+    for (const [x0, cy, s] of [
+      [40, 26, 1],
+      [120, 14, 0.7],
+      [300, 30, 1.2],
+      [230, 60, 0.6],
+      [70, 70, 0.5],
+    ]) {
+      const cx = base + x0;
+      for (let i = 0; i < 5; i++) {
+        cloud.fillEllipse(cx + (i - 2) * 9 * s, cy - (i % 2) * 4 * s, 10 * s, 5 * s, '#ffffff');
+      }
+      for (let x = cx - 26 * s; x < cx + 26 * s; x++) cloud.set(x, cy + 4 * s, '#e2f2fb');
     }
-    for (let x = cx - 26 * s; x < cx + 26 * s; x++) cloud.set(x, cy + 4 * s, '#e2f2fb');
   }
   ctx.drawImage(cloud.toCanvas(), 0, 0);
 
   // 遠くの海面
   for (let y = HORIZON_Y; y < SURFACE_Y; y += 2) {
     ctx.fillStyle = mix('#1d6fb0', COLORS.farSea, (y - HORIZON_Y) / (SURFACE_Y - HORIZON_Y));
-    ctx.fillRect(0, y, VIEW_W, 2);
+    ctx.fillRect(0, y, W, 2);
   }
   ctx.fillStyle = '#a8dcf4';
   for (let i = 0; i < 70; i++) {
     const y = HORIZON_Y + Math.floor(rng() * (SURFACE_Y - HORIZON_Y - 2));
-    ctx.fillRect(Math.floor(rng() * VIEW_W), y, 2 + Math.floor(rng() * 5), 1);
+    ctx.fillRect(Math.floor(rng() * W), y, 2 + Math.floor(rng() * 5), 1);
   }
 
   // 海中：深さに応じて水色→紺色。帯の境目はディザで混ぜる。
@@ -94,7 +100,7 @@ export function getBackground(): HTMLCanvasElement {
     const band = Math.floor(t * 24) / 24;
     const next = Math.min(1, band + 1 / 24);
     const f = (t - band) * 24;
-    for (let x = 0; x < VIEW_W; x++) {
+    for (let x = 0; x < W; x++) {
       const dither = ((x + y) % 2 === 0 ? 0.25 : 0.75) < f;
       ctx.fillStyle = seaColor(dither ? next : band);
       ctx.fillRect(x, y, 1, 1);
@@ -103,7 +109,7 @@ export function getBackground(): HTMLCanvasElement {
 
   // 差し込む光
   ctx.save();
-  for (let i = 0; i < 6; i++) {
+  for (let i = 0; 60 + i * 50 < W; i++) {
     const x0 = 60 + i * 50 + range(rng, -10, 10);
     const w0 = range(rng, 8, 18);
     const grad = ctx.createLinearGradient(0, SURFACE_Y, 0, SURFACE_Y + 260);
@@ -121,10 +127,10 @@ export function getBackground(): HTMLCanvasElement {
   ctx.restore();
 
   // 岩場
-  const tops = rockProfile();
-  const rock = new PixelGrid(VIEW_W, PANEL_Y);
+  const tops = rockProfile(W);
+  const rock = new PixelGrid(W, PANEL_Y);
   const stones = ['#1c3048', '#223a56', '#182a40', '#28425f'];
-  for (let x = 0; x < VIEW_W; x++) {
+  for (let x = 0; x < W; x++) {
     const cx = Math.floor(x / 9);
     const shift = (cx % 2) * 4;
     for (let y = tops[x]; y < PANEL_Y; y++) {
@@ -142,7 +148,7 @@ export function getBackground(): HTMLCanvasElement {
   }
   // 岩の割れ目
   for (let i = 0; i < 40; i++) {
-    let x = Math.floor(rng() * VIEW_W);
+    let x = Math.floor(rng() * W);
     let y = tops[x] + 6 + Math.floor(rng() * 30);
     for (let j = 0; j < 8; j++) {
       rock.set(x, y, '#0e1a2c');
@@ -154,9 +160,9 @@ export function getBackground(): HTMLCanvasElement {
 
   // 操作パネル
   ctx.fillStyle = COLORS.panel;
-  ctx.fillRect(0, PANEL_Y, VIEW_W, VIEW_H - PANEL_Y);
+  ctx.fillRect(0, PANEL_Y, W, VIEW_H - PANEL_Y);
   ctx.fillStyle = COLORS.panelEdge;
-  ctx.fillRect(0, PANEL_Y, VIEW_W, 2);
+  ctx.fillRect(0, PANEL_Y, W, 2);
 
   background = canvas;
   return canvas;
@@ -170,7 +176,8 @@ function hashNoise(x: number, y: number): number {
 
 /** 海面のきらめき・波線（毎フレーム）。 */
 export function drawSurface(ctx: CanvasRenderingContext2D, time: number): void {
-  for (let x = 0; x < VIEW_W; x += 2) {
+  const W = view.w;
+  for (let x = 0; x < W; x += 2) {
     const y = SURFACE_Y + Math.round(Math.sin(x * 0.08 + time * 2) * 1.5);
     ctx.fillStyle = 'rgba(210,245,255,0.85)';
     ctx.fillRect(x, y, 2, 1);
@@ -179,10 +186,10 @@ export function drawSurface(ctx: CanvasRenderingContext2D, time: number): void {
   }
   const phase = Math.floor(time * 3);
   ctx.fillStyle = '#e8f8ff';
-  for (let i = 0; i < 12; i++) {
+  for (let i = 0; i < Math.round((12 * W) / VIEW_W); i++) {
     const h = hashNoise(i, phase);
     if (h < 0.5) continue;
-    ctx.fillRect(Math.floor(hashNoise(i, 99) * VIEW_W), HORIZON_Y + 3 + Math.floor(h * 16), 3, 1);
+    ctx.fillRect(Math.floor(hashNoise(i, 99) * W), HORIZON_Y + 3 + Math.floor(h * 16), 3, 1);
   }
 }
 
@@ -245,7 +252,7 @@ function getFisher(): HTMLCanvasElement {
   return fisherSprite;
 }
 
-/** 竿を握る手の位置。 */
+/** 竿を握る手の位置（幅 360 基準）。 */
 const HANDS = { x: FISHER_X - 10 + 1, y: BOAT.y + 7 + 16 } as const;
 
 /**
@@ -254,12 +261,14 @@ const HANDS = { x: FISHER_X - 10 + 1, y: BOAT.y + 7 + 16 } as const;
  */
 export function drawBoat(ctx: CanvasRenderingContext2D, time: number, bend: number): { x: number; y: number } {
   const bob = Math.round(Math.sin(time * 1.6) * 1);
-  ctx.drawImage(getBoat(), BOAT.x, BOAT.y - 30 + bob + 8);
-  ctx.drawImage(getFisher(), FISHER_X - 10, BOAT.y - 18 + bob);
+  // 船と釣り人は画面中央（横長画面でも釣り糸が中央に来る）
+  const ox = centerOffset();
+  ctx.drawImage(getBoat(), BOAT.x + ox, BOAT.y - 30 + bob + 8);
+  ctx.drawImage(getFisher(), FISHER_X - 10 + ox, BOAT.y - 18 + bob);
 
-  const hx = HANDS.x;
+  const hx = HANDS.x + ox;
   const hy = HANDS.y - 12 + bob;
-  const tip = { x: ROD_TIP.x + bend * 8, y: ROD_TIP.y + bend * 26 + bob };
+  const tip = { x: ROD_TIP.x + ox + bend * 8, y: ROD_TIP.y + bend * 26 + bob };
   const cx = hx - 30;
   const cy = ROD_TIP.y - 12 + bend * 6;
   const steps = 60;

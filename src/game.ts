@@ -1,6 +1,6 @@
 import { Sfx } from './audio';
-import { VIEW_W } from './config';
 import { drawText } from './gfx/text';
+import { view } from './viewport';
 import type { Catches } from './logic/score';
 import { loadHighScore, loadMuted, saveHighScore, saveMuted } from './storage';
 
@@ -12,7 +12,9 @@ export interface Scene {
 }
 
 /** 画面右上のミュートボタン。 */
-export const MUTE_BUTTON = { x: VIEW_W - 30, y: 6, w: 24, h: 24 } as const;
+function muteButton() {
+  return { x: view.w - 30, y: 6, w: 24, h: 24 };
+}
 
 export interface SceneFactory {
   title(game: Game): Scene;
@@ -51,7 +53,7 @@ export class Game {
 
   pointerDown(x: number, y: number): void {
     this.sfx.unlock();
-    const m = MUTE_BUTTON;
+    const m = muteButton();
     if (x >= m.x && x <= m.x + m.w && y >= m.y && y <= m.y + m.h) {
       this.sfx.muted = !this.sfx.muted;
       saveMuted(this.sfx.muted);
@@ -74,7 +76,7 @@ export class Game {
   }
 
   private renderMute(ctx: CanvasRenderingContext2D): void {
-    const m = MUTE_BUTTON;
+    const m = muteButton();
     ctx.fillStyle = 'rgba(10,20,40,0.55)';
     ctx.fillRect(m.x, m.y, m.w, m.h);
     // スピーカー

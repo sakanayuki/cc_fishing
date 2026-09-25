@@ -1,4 +1,4 @@
-import { VIEW_H, VIEW_W } from './config';
+import { VIEW_H } from './config';
 import { Game } from './game';
 import { makeCanvas } from './gfx/pixel';
 import { loadFishArt } from './gfx/fishArt';
@@ -6,10 +6,13 @@ import { FONT_FAMILY } from './gfx/text';
 import { PlayScene } from './scenes/play';
 import { ResultScene } from './scenes/result';
 import { TitleScene } from './scenes/title';
+import { fitViewWidth, view } from './viewport';
 
 const screen = document.getElementById('screen') as HTMLCanvasElement;
 const screenCtx = screen.getContext('2d')!;
-const [view, viewCtx] = makeCanvas(VIEW_W, VIEW_H);
+// 最初のシーンを作る前に、画面の縦横比から論理画面の幅を決めておく
+fitViewWidth(window.innerWidth / window.innerHeight);
+const [canvas, viewCtx] = makeCanvas(view.w, VIEW_H);
 
 const game = new Game({
   title: (g) => new TitleScene(g),
@@ -28,10 +31,15 @@ function resize(): void {
   screen.height = Math.round(h * dpr);
   screen.style.width = `${w}px`;
   screen.style.height = `${h}px`;
-  const scale = Math.min(screen.width / VIEW_W, screen.height / VIEW_H);
+  // 横長の画面では海を横に広げ、縦は 640 のまま拡大する
+  if (fitViewWidth(w / h) !== canvas.width) {
+    canvas.width = view.w;
+    viewCtx.imageSmoothingEnabled = false;
+  }
+  const scale = Math.min(screen.width / view.w, screen.height / VIEW_H);
   layout = {
     scale,
-    ox: Math.round((screen.width - VIEW_W * scale) / 2),
+    ox: Math.round((screen.width - view.w * scale) / 2),
     oy: Math.round((screen.height - VIEW_H * scale) / 2),
     dpr,
   };
@@ -66,7 +74,7 @@ window.addEventListener('keydown', (e) => {
   if ((e.code !== 'Space' && e.code !== 'Enter') || e.repeat) return;
   e.preventDefault();
   keyDown = true;
-  game.pointerDown(VIEW_W / 2, 560);
+  game.pointerDown(view.w / 2, 560);
 });
 window.addEventListener('keyup', (e) => {
   if ((e.code !== 'Space' && e.code !== 'Enter') || !keyDown) return;
@@ -80,10 +88,10 @@ function present(): void {
   screenCtx.imageSmoothingEnabled = false;
   // 縦横比の余りは、画面の最上段・最下段のピクセルを引き伸ばして延長する
   if (oy > 0) {
-    screenCtx.drawImage(view, 0, 0, VIEW_W, 1, ox, 0, VIEW_W * scale, oy + 1);
-    screenCtx.drawImage(view, 0, VIEW_H - 1, VIEW_W, 1, ox, oy + drawnH - 1, VIEW_W * scale, screen.height - oy - drawnH + 1);
+    screenCtx.drawImage(canvas, 0, 0, view.w, 1, ox, 0, view.w * scale, oy + 1);
+    screenCtx.drawImage(canvas, 0, VIEW_H - 1, view.w, 1, ox, oy + drawnH - 1, view.w * scale, screen.height - oy - drawnH + 1);
   }
-  screenCtx.drawImage(view, ox, oy, VIEW_W * scale, drawnH);
+  screenCtx.drawImage(canvas, ox, oy, view.w * scale, drawnH);
 }
 
 let last = performance.now();

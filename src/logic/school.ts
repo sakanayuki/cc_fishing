@@ -1,6 +1,7 @@
-import { LAYER_IDS, LAYERS, VIEW_W, type LayerId } from '../config';
+import { LAYER_IDS, LAYERS, type LayerId } from '../config';
 import { speciesInLayer, type FishSpecies } from '../fish';
 import { pickWeighted, range, type Rng } from '../rng';
+import { scaledCount, view } from '../viewport';
 
 export interface SwimmingFish {
   uid: number;
@@ -58,7 +59,7 @@ export class School {
   /** 開始時に画面内へ魚をばらまく。 */
   populate(): void {
     for (const layer of LAYER_IDS) {
-      while (this.countIn(layer) < LAYERS[layer].target) {
+      while (this.countIn(layer) < scaledCount(LAYERS[layer].target)) {
         this.spawnGroup(layer, true);
       }
       this.spawnTimers[layer] = range(this.rng, ...SPAWN_DELAY);
@@ -83,11 +84,11 @@ export class School {
     this.fishes = this.fishes.filter((f) => {
       if (f === exclude) return true;
       const half = f.species.width / 2;
-      return f.dir > 0 ? f.x - half < VIEW_W + 4 : f.x + half > -4;
+      return f.dir > 0 ? f.x - half < view.w + 4 : f.x + half > -4;
     });
 
     for (const layer of LAYER_IDS) {
-      if (this.countIn(layer) >= LAYERS[layer].target) continue;
+      if (this.countIn(layer) >= scaledCount(LAYERS[layer].target)) continue;
       this.spawnTimers[layer] -= dt;
       if (this.spawnTimers[layer] <= 0) {
         this.spawnGroup(layer, false);
@@ -100,7 +101,7 @@ export class School {
     const rng = this.rng;
     const species = pickWeighted(rng, speciesInLayer(layer));
     const band = LAYERS[layer];
-    const room = band.target - this.countIn(layer);
+    const room = scaledCount(band.target) - this.countIn(layer);
     const [minN, maxN] = species.school ?? [1, 1];
     const n = Math.max(1, Math.min(room + 1, Math.floor(range(rng, minN, maxN + 1))));
 
@@ -111,7 +112,7 @@ export class School {
     // アンコウは海底付近に張り付く。
     const leaderY = species.id === 'ankou' ? range(rng, bottom - 16, bottom) : range(rng, top, bottom);
     const w = species.width;
-    const leaderX = onScreen ? range(rng, w, VIEW_W - w) : dir > 0 ? -w / 2 : VIEW_W + w / 2;
+    const leaderX = onScreen ? range(rng, w, view.w - w) : dir > 0 ? -w / 2 : view.w + w / 2;
 
     for (let i = 0; i < n; i++) {
       const y = Math.min(bottom, Math.max(top, leaderY + (i === 0 ? 0 : range(rng, -12, 12))));

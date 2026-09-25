@@ -3,13 +3,12 @@ import {
   CUTIN_DURATION,
   FAIL_MESSAGE_DURATION,
   FIGHT,
-  LINE_X,
   PANEL_Y,
   TIME_LIMIT,
   TIME_UP_DURATION,
   VIEW_H,
   VIEW_W,
-} from '../config';
+  } from '../config';
 import { rarityOf, type FishSpecies } from '../fish';
 import type { Game, Scene } from '../game';
 import { fishSprite } from '../gfx/fishArt';
@@ -21,10 +20,14 @@ import { findTouchingFish, School, type SwimmingFish } from '../logic/school';
 import { addCatch, totalScore, type Catches } from '../logic/score';
 import { createRng } from '../rng';
 import { Bubbles, drawOcean } from './ocean';
+import { lineX, view } from '../viewport';
 
 /** 糸の結び目から針先までの距離。 */
 const HOOK_POINT = 9;
-export const REEL_BUTTON = { x: VIEW_W / 2, y: PANEL_Y + (VIEW_H - PANEL_Y) / 2 + 2, r: 32 } as const;
+/** 画面下の丸ボタン（画面幅に合わせて中央に置く）。 */
+function reelButton() {
+  return { x: view.w / 2, y: PANEL_Y + (VIEW_H - PANEL_Y) / 2 + 2, r: 32 };
+}
 
 type Phase =
   | { kind: 'fishing' }
@@ -62,7 +65,7 @@ export class PlayScene implements Scene {
     this.pressed = true;
 
     if (p.kind === 'fishing') {
-      const target = findTouchingFish(this.school.fishes, LINE_X, this.hook.y + HOOK_POINT);
+      const target = findTouchingFish(this.school.fishes, lineX(), this.hook.y + HOOK_POINT);
       if (target) {
         this.startFight(target);
         return;
@@ -84,7 +87,7 @@ export class PlayScene implements Scene {
     this.school.remove(fish);
     const fight = createFight(fish.species, this.hook.y + HOOK_POINT, this.rng);
     this.phase = { kind: 'fighting', fight, fish, sway: 0 };
-    this.bubbles.spawn(LINE_X, fight.fishY, 8);
+    this.bubbles.spawn(lineX(), fight.fishY, 8);
     this.game.sfx.hook();
     vibrate(40);
   }
@@ -156,7 +159,7 @@ export class PlayScene implements Scene {
       this.game.sfx.catch(rarityOf(fight.species));
       vibrate(80);
     } else if (fight.result === 'snapped' || fight.result === 'escaped') {
-      this.phase = { kind: 'fail', reason: fight.result, t: 0, x: LINE_X + p.sway, y: fight.fishY };
+      this.phase = { kind: 'fail', reason: fight.result, t: 0, x: lineX() + p.sway, y: fight.fishY };
       if (fight.result === 'snapped') {
         this.game.sfx.snap();
         vibrate(150);
@@ -166,7 +169,7 @@ export class PlayScene implements Scene {
       // 逃げた魚は泳ぎ去る
       if (fight.result === 'escaped') {
         const f = p.fish;
-        f.x = LINE_X + p.sway;
+        f.x = lineX() + p.sway;
         f.baseY = Math.min(Math.max(fight.fishY, 130), 470);
         f.speed *= 2.2;
         this.school.fishes.push(f);
@@ -199,11 +202,11 @@ export class PlayScene implements Scene {
 
     if (p.kind === 'fishing') {
       const hy = Math.round(this.hook.y);
-      drawLine(ctx, tip, { x: LINE_X, y: hy });
-      drawHook(ctx, LINE_X, hy);
-      const touching = findTouchingFish(this.school.fishes, LINE_X, this.hook.y + HOOK_POINT);
+      drawLine(ctx, tip, { x: lineX(), y: hy });
+      drawHook(ctx, lineX(), hy);
+      const touching = findTouchingFish(this.school.fishes, lineX(), this.hook.y + HOOK_POINT);
       if (touching && Math.floor(this.time * 6) % 2 === 0) {
-        drawText(ctx, '！', LINE_X + 12, hy - 4, { size: 16, color: '#ffe060', outline: '#402000', outlineWidth: 3 });
+        drawText(ctx, '！', lineX() + 12, hy - 4, { size: 16, color: '#ffe060', outline: '#402000', outlineWidth: 3 });
       }
     } else if (fighting) {
       this.renderFight(ctx, fighting, tip);
@@ -217,14 +220,14 @@ export class PlayScene implements Scene {
     if (p.kind === 'cutin') renderCutin(ctx, p);
     if (p.kind === 'timeup') {
       ctx.fillStyle = `rgba(0,0,0,${Math.min(0.5, p.t)})`;
-      ctx.fillRect(0, 0, VIEW_W, VIEW_H);
-      drawText(ctx, 'しゅうりょう！', VIEW_W / 2, 280, { size: 36, color: '#ffffff', outline: '#10304a', outlineWidth: 8 });
+      ctx.fillRect(0, 0, view.w, VIEW_H);
+      drawText(ctx, 'しゅうりょう！', view.w / 2, 280, { size: 36, color: '#ffffff', outline: '#10304a', outlineWidth: 8 });
     }
   }
 
   private renderFight(ctx: CanvasRenderingContext2D, p: Extract<Phase, { kind: 'fighting' }>, tip: { x: number; y: number }): void {
     const fight = p.fight;
-    const mx = Math.round(LINE_X + p.sway);
+    const mx = Math.round(lineX() + p.sway);
     const my = Math.round(fight.fishY);
     drawLine(ctx, tip, { x: mx, y: my });
 
@@ -242,7 +245,7 @@ export class PlayScene implements Scene {
     const barW = 12;
     const fishLen = sprite.width;
     let bx = mx + 26;
-    if (bx + barW + 20 > VIEW_W) bx = mx - 26 - barW - fishLen / 2;
+    if (bx + barW + 20 > view.w) bx = mx - 26 - barW - fishLen / 2;
     const centerY = my + fishLen / 2 - 10;
     const by = Math.round(Math.min(PANEL_Y - barH - 8, Math.max(40, centerY - barH / 2)));
     renderTensionBar(ctx, bx, by, barW, barH, fight, this.time);
@@ -254,13 +257,13 @@ export class PlayScene implements Scene {
       const len = 40;
       drawLine(ctx, tip, { x: tip.x + Math.sin(p.t * 8) * 4, y: tip.y + len });
     } else {
-      drawLine(ctx, tip, { x: LINE_X, y: p.y });
-      drawHook(ctx, LINE_X, Math.round(p.y), false);
+      drawLine(ctx, tip, { x: lineX(), y: p.y });
+      drawHook(ctx, lineX(), Math.round(p.y), false);
     }
     const text = p.reason === 'snapped' ? '糸が切れた！' : '逃げられた…';
     const color = p.reason === 'snapped' ? '#ff6b5a' : '#9fd8ff';
     const y = Math.max(160, Math.min(440, p.y)) - p.t * 12;
-    drawText(ctx, text, VIEW_W / 2, y, { size: 28, color, outline: '#101828', outlineWidth: 6 });
+    drawText(ctx, text, view.w / 2, y, { size: 28, color, outline: '#101828', outlineWidth: 6 });
   }
 
   private renderHud(ctx: CanvasRenderingContext2D): void {
@@ -275,8 +278,8 @@ export class PlayScene implements Scene {
     });
     const score = totalScore(this.catches);
     ctx.fillStyle = 'rgba(10,20,40,0.55)';
-    ctx.fillRect(VIEW_W - 150, 6, 116, 24);
-    drawText(ctx, `${score} pt`, VIEW_W - 40, 19, { size: 16, align: 'right', color: '#ffe680' });
+    ctx.fillRect(view.w - 150, 6, 116, 24);
+    drawText(ctx, `${score} pt`, view.w - 40, 19, { size: 16, align: 'right', color: '#ffe680' });
   }
 
   private renderButton(ctx: CanvasRenderingContext2D): void {
@@ -287,7 +290,7 @@ export class PlayScene implements Scene {
         : p.kind === 'fishing'
           ? '魚に針が重なったらタップ！'
           : '';
-    if (hint) drawText(ctx, hint, VIEW_W / 2, PANEL_Y + 12, { size: 12, color: '#9fb4d8' });
+    if (hint) drawText(ctx, hint, view.w / 2, PANEL_Y + 12, { size: 12, color: '#9fb4d8' });
     renderReelButton(ctx, this.pressed && (p.kind === 'fishing' || p.kind === 'fighting'), p.kind === 'fighting' ? this.time : 0);
   }
 }
@@ -295,7 +298,7 @@ export class PlayScene implements Scene {
 // ---- 描画部品 ----
 
 export function renderReelButton(ctx: CanvasRenderingContext2D, pressed: boolean, pulse: number): void {
-  const { x, y, r } = REEL_BUTTON;
+  const { x, y, r } = reelButton();
   const off = pressed ? 2 : 0;
   ctx.fillStyle = '#081020';
   circle(ctx, x, y + 4, r + 3);
@@ -382,17 +385,17 @@ function randomLines(): number[] {
 function renderCutin(ctx: CanvasRenderingContext2D, p: Extract<Phase, { kind: 'cutin' }>): void {
   const { species, t } = p;
   const rarity = rarityOf(species);
-  const cx = VIEW_W / 2;
+  const cx = view.w / 2;
   const cy = 320;
 
   // 背景＋集中線
   ctx.fillStyle = rarity === 3 ? '#1a1040' : '#0c3060';
-  ctx.fillRect(0, 0, VIEW_W, VIEW_H);
+  ctx.fillRect(0, 0, view.w, VIEW_H);
   const grad = ctx.createRadialGradient(cx, cy, 10, cx, cy, 300);
   grad.addColorStop(0, rarity === 3 ? '#e0a040' : '#4ab8e8');
   grad.addColorStop(1, 'rgba(0,0,0,0)');
   ctx.fillStyle = grad;
-  ctx.fillRect(0, 0, VIEW_W, VIEW_H);
+  ctx.fillRect(0, 0, view.w, VIEW_H);
   ctx.fillStyle = 'rgba(255,255,255,0.75)';
   for (let i = 0; i < p.lines.length; i++) {
     const a = (i / p.lines.length) * Math.PI * 2 + p.lines[i] * 0.15;
@@ -437,9 +440,11 @@ function renderCutin(ctx: CanvasRenderingContext2D, p: Extract<Phase, { kind: 'c
   ctx.save();
   ctx.translate(slide, 0);
   ctx.beginPath();
-  ctx.moveTo(130, VIEW_H);
-  ctx.lineTo(VIEW_W, 400);
-  ctx.lineTo(VIEW_W, VIEW_H);
+  // 右下に寄せる（横長画面では右端へ）
+  const right = view.w - VIEW_W;
+  ctx.moveTo(130 + right, VIEW_H);
+  ctx.lineTo(view.w, 400);
+  ctx.lineTo(view.w, VIEW_H);
   ctx.closePath();
   ctx.fillStyle = '#8fd4f4';
   ctx.fill();
@@ -449,13 +454,13 @@ function renderCutin(ctx: CanvasRenderingContext2D, p: Extract<Phase, { kind: 'c
   ctx.clip();
   const face = getFace();
   ctx.imageSmoothingEnabled = false;
-  ctx.drawImage(face, 204, 476, face.width * 3, face.height * 3);
+  ctx.drawImage(face, 204 + right, 476, face.width * 3, face.height * 3);
   ctx.restore();
 
   // フラッシュ
   if (t < 0.25) {
     ctx.fillStyle = `rgba(255,255,255,${(1 - t / 0.25) * (rarity === 3 ? 1 : 0.7)})`;
-    ctx.fillRect(0, 0, VIEW_W, VIEW_H);
+    ctx.fillRect(0, 0, view.w, VIEW_H);
   }
 
   // 文字

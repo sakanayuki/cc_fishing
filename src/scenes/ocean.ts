@@ -1,7 +1,8 @@
-import { PANEL_Y, SURFACE_Y, VIEW_W } from '../config';
+import { PANEL_Y, SURFACE_Y } from '../config';
 import { fishSprite } from '../gfx/fishArt';
 import { drawBoat, drawSurface, getBackground } from '../gfx/scenery';
 import type { SwimmingFish } from '../logic/school';
+import { view } from '../viewport';
 
 export function drawSwimmingFish(ctx: CanvasRenderingContext2D, f: SwimmingFish): void {
   const s = fishSprite(f.species.id);
@@ -26,7 +27,7 @@ export class Bubbles {
     if (this.timer <= 0) {
       this.timer = 0.3 + Math.random() * 0.6;
       this.items.push({
-        x: Math.random() * VIEW_W,
+        x: Math.random() * view.w,
         y: PANEL_Y - 40 - Math.random() * 60,
         speed: 14 + Math.random() * 16,
         size: Math.random() < 0.3 ? 2 : 1,
